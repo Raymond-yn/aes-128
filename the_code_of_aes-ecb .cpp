@@ -4,7 +4,7 @@ using namespace std;
 /**
 * Created by ray on 2016/11/1.
 *采用ECB模式扩展密钥
-*填充模式为 pkcs7
+*填充模式为 pkcs#7
 */
 class Aes {
 
@@ -149,102 +149,102 @@ private:
 	/*
 	做密钥扩展
 	*/
-void KeyExpansion(string thekey){
-			 int i, j, r, c;
-			 char rc[] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
-			 for (r = 0; r < 4; r++)
-			 {
-				 for (c = 0; c < 4; c++)
-				 {
-					 key[0][r][c] = thekey[(r + c * 4)];
-				 }
-			 }
-			 for (i = 1; i <= 10; i++)
-			 {
-				 for (j = 0; j < 4; j++)
-				 {
-					 char t[4];
-					 for (r = 0; r < 4; r++)
-					 {
-						 t[r] = j ? key[i][r][j - 1] : key[i - 1][r][3];
-					 }
-					 if (j == 0)
-					 {
-						 char temp = t[0];
-						 for (r = 0; r < 3; r++)
-						 {
-							 t[r] = sBox[t[(r + 1) % 4]];
-						 }
-						 t[3] = sBox[temp];
-						 t[0] ^= rc[i - 1];
-					 }
-					 for (r = 0; r < 4; r++)
-					 {
-						 key[i][r][j] = (key[i - 1][r][j] ^ t[r]);
-					 }
-				 }
-			 }
-}
+	void KeyExpansion(string thekey){
+		int i, j, r, c;
+		char rc[] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
+		for (r = 0; r < 4; r++)
+		{
+			for (c = 0; c < 4; c++)
+			{
+				key[0][r][c] = thekey[(r + c * 4)];
+			}
+		}
+		for (i = 1; i <= 10; i++)
+		{
+			for (j = 0; j < 4; j++)
+			{
+				char t[4];
+				for (r = 0; r < 4; r++)
+				{
+					t[r] = j ? key[i][r][j - 1] : key[i - 1][r][3];
+				}
+				if (j == 0)
+				{
+					char temp = t[0];
+					for (r = 0; r < 3; r++)
+					{
+						t[r] = sBox[t[(r + 1) % 4]];
+					}
+					t[3] = sBox[temp];
+					t[0] ^= rc[i - 1];
+				}
+				for (r = 0; r < 4; r++)
+				{
+					key[i][r][j] = (key[i - 1][r][j] ^ t[r]);
+				}
+			}
+		}
+	}
 
-/*
-对字符串数组第index后128位进行加密的操作集成函数
-*/
- void Encryption(int index){
+	/*
+	对字符串数组第index后128位进行加密的操作集成函数
+	*/
+	void Encryption(int index){
 
-			 for (int r = 0; r < 4; r++)
-			 {
-				 for (int c = 0; c < 4; c++)
-				 {
-					 to_do[r][c] = todo_str[(index + c * 4 + r)];
-				 }
-			 }
-			 AddRoundKey(key[0]);
-			 for (int i = 1; i <= 10; i++)
-			 {
-				 SubBytes();
-				 ShiftRows();
-				 if (i != 10) MixColumns();
-				 AddRoundKey(key[i]);
-			 }
+		for (int r = 0; r < 4; r++)
+		{
+			for (int c = 0; c < 4; c++)
+			{
+				to_do[r][c] = todo_str[(index + c * 4 + r)];
+			}
+		}
+		AddRoundKey(key[0]);
+		for (int i = 1; i <= 10; i++)
+		{
+			SubBytes();
+			ShiftRows();
+			if (i != 10) MixColumns();
+			AddRoundKey(key[i]);
+		}
 
-			 for (int r = 0; r < 4; r++)
-			 {
-				 for (int c = 0; c < 4; c++)
-				 {
-					 todo_str[index + c * 4 + r] = to_do[r][c];
-				 }
-			 }
-}
-void  Decryption(int index)
-		 {
-			 int i, r, c;
+		for (int r = 0; r < 4; r++)
+		{
+			for (int c = 0; c < 4; c++)
+			{
+				todo_str[index + c * 4 + r] = to_do[r][c];
+			}
+		}
+	}
+	void  Decryption(int index)
+	{
+		int i, r, c;
 
-			 for (r = 0; r < 4; r++)
-			 {
-				 for (c = 0; c < 4; c++)
-				 {
-					 to_do[r][c] = todo_str[index + c * 4 + r];
-				 }
-			 }
+		for (r = 0; r < 4; r++)
+		{
+			for (c = 0; c < 4; c++)
+			{
+				to_do[r][c] = todo_str[index + c * 4 + r];
+			}
+		}
 
-			 AddRoundKey(key[10]);
-			 for (i = 9; i >= 0; i--)
-			 {
-				 InvShiftRows();
-				 InvSubBytes();
-				 AddRoundKey(key[i]);
-				 if (i)  InvMixColumns();
-			 }
+		AddRoundKey(key[10]);
+		for (i = 9; i >= 0; i--)
+		{
+			InvShiftRows();
+			InvSubBytes();
+			AddRoundKey(key[i]);
+			if (i)  InvMixColumns();
+		}
 
-			 for (r = 0; r < 4; r++)
-			 {
-				 for (c = 0; c < 4; c++)
-				 {
-					 todo_str[index + c * 4 + r] = to_do[r][c];
-				 }
-			 }
+		for (r = 0; r < 4; r++)
+		{
+			for (c = 0; c < 4; c++)
+			{
+				todo_str[index + c * 4 + r] = to_do[r][c];
+			}
+		}
 
-		 }
+	}
 
 
 public:
@@ -257,15 +257,9 @@ public:
 			for (int i = 0; i < 16; i++)
 				todo_str += paddingchar[0];							//如果字节刚好是16的倍数，则也要填充16字节的填充字符
 		}
-		else if ((16-differ)<=4){
-			int i = 16 - differ;
-			for (int j = 0; j<16+i; j++){
-				todo_str += paddingchar[i];							//如果字节不是16的倍数，但是填充字符数量太少，为防止误删正确的数据，要求多填充16字节的填充字符
-			}
-		}
 		else{
 			int i = 16 - differ;
-			for (int j=0;j<i;j++){
+			for (int j = 0; j < i; j++){
 				todo_str += paddingchar[i];
 			}
 		}
@@ -280,32 +274,30 @@ public:
 		for (int i = 0; i < todo_str.length(); i += 16) {
 			Decryption(i);
 		}
-		int differ = hexchtoi(todo_str.back());
-		if (differ <= 4){
-			todo_str = todo_str.substr(0,todo_str.length()-16-differ);
-		}
-		else{
-			todo_str = todo_str.substr(0, todo_str.length() -  differ);
-		}
+		int differ = (int)(todo_str.back());
+		if (differ == 0)
+			todo_str = todo_str.substr(0, todo_str.length() - 16);
+		else
+			todo_str = todo_str.substr(0, todo_str.length() - differ);
 		return todo_str;
 	}
-	int hexchtoi(char hexch)
-	{
-		char qhexch[] = "abcdef";
-		int i;
-		for (i = 0; i<6; i++){
-			if ((hexch == qhexch[i]))
-				break;
-		}
-		if (i >= 6){
-			return (int)(hexch-'0'); /* 非十六进制字符 */
-		}
-		return 10 + i;
-	}
+	//int hexchtoi(char hexch)
+	//{
+	//	char qhexch[] = "abcdef";
+	//	int i;
+	//	for (i = 0; i < 6; i++){
+	//		if ((hexch == qhexch[i]))
+	//			break;
+	//	}
+	//	if (i >= 6){
+	//		return (int)(hexch - '0'); /* 非十六进制字符 */
+	//	}
+	//	return 10 + i;
+	//}
 
 	/*构造函数，用来初始化沙盒和填充字符*/
 	Aes(){
-		char paddingtmp[16] = { '0','1', '2', '3', '4', '5', '6', '7' ,'8','9','a','b','c','d','e','f'};
+		char paddingtmp[16] = {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f};
 		char tmp[] = {     /*  0    1    2    3    4    5    6    7    8    9    a    b    c    d    e    f */
 			0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76, /*0*/
 			0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, /*1*/
@@ -356,7 +348,7 @@ public:
 int main(){
 	string key = "1A2B3C4D5E6F7G8H";
 	string plaintext;
-	plaintext = "12345678901234567";
+	plaintext = "12345";
 	Aes aes;
 	string ciphertext = aes.Process(key, plaintext);
 	string inverciphertext = aes.InverProcess(key, ciphertext);
