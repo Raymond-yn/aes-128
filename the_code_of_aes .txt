@@ -4,16 +4,17 @@ using namespace std;
 /**
 * Created by ray on 2016/11/1.
 *采用ECB模式扩展密钥
+*填充模式为 pkcs7
 */
 class Aes {
 
 private:
 	unsigned char to_do[4][4];							//待处理的字符矩阵
 	unsigned char key[11][4][4];						//由初始密钥和扩展密钥组成的11组密钥矩阵
-	string todo_str;									//待处理的字符串文本
+	string todo_str;											//待处理的字符串文本
 	unsigned char sBox[256];							//映射用的沙盒
-	unsigned char invsBox[256];						    //逆映射的沙盒
-
+	unsigned char invsBox[256];						//逆映射的沙盒
+	char paddingchar[16];									//填充字符
 	/*
 	做字节的代换
 	*/
@@ -247,12 +248,27 @@ void  Decryption(int index)
 
 
 public:
-	/*将输入的字符串按128位切割，并用特殊符号'['填补空余不足128位的字符串，并分组加密*/
+	/*将输入的字符串按128位切割，并用填充字符填补不足128位的字符串，这里采用cfb的填充模式，并分组加密*/
 	string Process(string thekey, string str) {
 		todo_str = str;
 		KeyExpansion(thekey);
-		for (; todo_str.length() % 16 != 0;)
-			todo_str += '[';
+		int differ = todo_str.length() % 16;
+		if (differ == 0){
+			for (int i = 0; i < 16; i++)
+				todo_str += paddingchar[0];							//如果字节刚好是16的倍数，则也要填充16字节的填充字符
+		}
+		else if ((16-differ)<=4){
+			int i = 16 - differ;
+			for (int j = 0; j<16+i; j++){
+				todo_str += paddingchar[i];							//如果字节不是16的倍数，但是填充字符数量太少，为防止误删正确的数据，要求多填充16字节的填充字符
+			}
+		}
+		else{
+			int i = 16 - differ;
+			for (int j=0;j<i;j++){
+				todo_str += paddingchar[i];
+			}
+		}
 		for (int i = 0; i < todo_str.length(); i += 16) {
 			Encryption(i);
 		}
@@ -264,13 +280,32 @@ public:
 		for (int i = 0; i < todo_str.length(); i += 16) {
 			Decryption(i);
 		}
-		for (; todo_str.back() == '[';)
-			todo_str = todo_str.substr(0, todo_str.length() - 1);
+		int differ = hexchtoi(todo_str.back());
+		if (differ <= 4){
+			todo_str = todo_str.substr(0,todo_str.length()-16-differ);
+		}
+		else{
+			todo_str = todo_str.substr(0, todo_str.length() -  differ);
+		}
 		return todo_str;
 	}
+	int hexchtoi(char hexch)
+	{
+		char qhexch[] = "abcdef";
+		int i;
+		for (i = 0; i<6; i++){
+			if ((hexch == qhexch[i]))
+				break;
+		}
+		if (i >= 6){
+			return (int)(hexch-'0'); /* 非十六进制字符 */
+		}
+		return 10 + i;
+	}
 
-	/*构造函数，用来初始化沙盒*/
+	/*构造函数，用来初始化沙盒和填充字符*/
 	Aes(){
+		char paddingtmp[16] = { '0','1', '2', '3', '4', '5', '6', '7' ,'8','9','a','b','c','d','e','f'};
 		char tmp[] = {     /*  0    1    2    3    4    5    6    7    8    9    a    b    c    d    e    f */
 			0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76, /*0*/
 			0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, /*1*/
@@ -308,6 +343,9 @@ public:
 			0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61, /*e*/
 			0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d  /*f*/
 		};
+		for (int i = 0; i < 16; i++){
+			paddingchar[i] = paddingtmp[i];
+		}
 		for (int i = 0; i < 256; i++){
 			sBox[i] = tmp[i];
 			invsBox[i] = invstmp[i];
@@ -318,7 +356,7 @@ public:
 int main(){
 	string key = "1A2B3C4D5E6F7G8H";
 	string plaintext;
-	plaintext = "12312345622222222222222222222222222222222222222222222222222222222222222";
+	plaintext = "12345678901234567";
 	Aes aes;
 	string ciphertext = aes.Process(key, plaintext);
 	string inverciphertext = aes.InverProcess(key, ciphertext);
